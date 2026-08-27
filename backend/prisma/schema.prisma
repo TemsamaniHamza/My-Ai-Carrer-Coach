@@ -1,0 +1,89 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                  String             @id @default(uuid())
+  email               String             @unique
+  password            String
+  name                String
+  title               String?
+  summary             String?
+  skills              String[]
+  experience          Json[]
+  education           Json[]
+  languages           String[]
+  // Cumulative interview-performance summary, updated incrementally each
+  // time an interview completes (using only that interview + the previous
+  // summary as input — never re-reads old interviews). Storing it here
+  // rather than deriving it live means deleting a past interview never
+  // changes it. Shape: { strengths: string[], weaknesses: string[] }.
+  strengthsWeaknesses Json?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  refreshTokens       RefreshToken[]
+  interviewSessions   InterviewSession[]
+  resumes           Resume[]
+  coverLetters      CoverLetter[]
+}
+
+model RefreshToken {
+  id          String   @id @default(uuid())
+  hashedToken String
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt   DateTime
+  revoked     Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+model InterviewSession {
+  id        String             @id @default(uuid())
+  userId    String
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status    String             @default("active") // active | completed
+  type      String             @default("mixed") // behavioral | technical | mixed
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+  messages  InterviewMessage[]
+}
+
+model InterviewMessage {
+  id         String           @id @default(uuid())
+  sessionId  String
+  session    InterviewSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  role       String           // "assistant" | "user"
+  content    String
+  evaluation Json?
+  createdAt  DateTime         @default(now())
+}
+
+model Resume {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String   @default("Untitled") // user-editable label; default only backfills pre-existing rows
+  markdown  String
+  createdAt DateTime @default(now())
+}
+
+model CoverLetter {
+  id             String   @id @default(uuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name           String   @default("Untitled")
+  content        String
+  jobDescription String
+  createdAt      DateTime @default(now())
+}

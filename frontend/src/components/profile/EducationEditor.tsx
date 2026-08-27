@@ -1,0 +1,93 @@
+'use client';
+
+import { EducationItem } from '@/types/user';
+
+interface EducationEditorProps {
+  items: EducationItem[];
+  onChange: (items: EducationItem[]) => void;
+}
+
+const EMPTY_ITEM: EducationItem = { institution: '', degree: '', duration: '', description: '' };
+
+export function EducationEditor({ items, onChange }: EducationEditorProps) {
+  function updateItem(index: number, field: keyof EducationItem, value: string) {
+    const next = items.map((item, i) => (i === index ? { ...item, [field]: value } : item));
+    onChange(next);
+  }
+
+  function addItem() {
+    onChange([...items, { ...EMPTY_ITEM }]);
+  }
+
+  function removeItem(index: number) {
+    onChange(items.filter((_, i) => i !== index));
+  }
+
+  return (
+    <div>
+      <div className="mb-2 flex items-center justify-between">
+        <label className="block text-sm font-medium text-gray-700">Education</label>
+        <button
+          type="button"
+          onClick={addItem}
+          className="text-sm font-medium text-blue-700 underline"
+        >
+          + Add education
+        </button>
+      </div>
+
+      {items.length === 0 && (
+        <p className="text-sm text-gray-400">No education added yet.</p>
+      )}
+
+      <div className="space-y-4">
+        {items.map((item, index) => (
+          <div key={index} className="rounded-md border border-gray-300 p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <span className="text-xs font-medium uppercase text-gray-400">
+                Entry {index + 1}
+              </span>
+              <button
+                type="button"
+                onClick={() => removeItem(index)}
+                className="text-xs font-medium text-red-600 hover:text-red-800"
+              >
+                Remove
+              </button>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <input
+                type="text"
+                placeholder="Institution"
+                value={item.institution}
+                onChange={(e) => updateItem(index, 'institution', e.target.value)}
+                className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-600 focus:outline-none"
+              />
+              <input
+                type="text"
+                placeholder="Degree"
+                value={item.degree}
+                onChange={(e) => updateItem(index, 'degree', e.target.value)}
+                className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-600 focus:outline-none"
+              />
+              <input
+                type="text"
+                placeholder="Duration (e.g. 2018–2022)"
+                value={item.duration}
+                onChange={(e) => updateItem(index, 'duration', e.target.value)}
+                className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-600 focus:outline-none sm:col-span-2"
+              />
+              <textarea
+                placeholder="Description (optional)"
+                value={item.description ?? ''}
+                onChange={(e) => updateItem(index, 'description', e.target.value)}
+                rows={2}
+                className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-600 focus:outline-none sm:col-span-2"
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
