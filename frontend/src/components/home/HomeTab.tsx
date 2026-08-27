@@ -35,8 +35,8 @@ const FEATURES: FeatureCard[] = [
     tab: 'resume',
     icon: FileText,
     title: 'Resume',
-    description: 'Generate a polished, ATS-friendly resume from your profile in one click.',
-    cta: 'Generate a resume',
+    description: 'A polished, one-page resume rendered live from your profile — always up to date.',
+    cta: 'View your resume',
   },
   {
     tab: 'cover-letter',
@@ -61,19 +61,16 @@ function computeProfileCompleteness(user: UserProfile): number {
 }
 
 export function HomeTab({ user, onNavigate }: HomeTabProps) {
-  const [counts, setCounts] = useState<{ resumes: number; coverLetters: number; interviews: number } | null>(
-    null,
-  );
+  // Resume is no longer a saved/generated thing with a count of its own —
+  // it's rendered live from the profile (see ResumePanel) — so there's no
+  // /ai/resumes call here anymore, just the two counts that still come from
+  // real saved history.
+  const [counts, setCounts] = useState<{ coverLetters: number; interviews: number } | null>(null);
 
   useEffect(() => {
-    Promise.all([
-      api.get<unknown[]>('/ai/resumes'),
-      api.get<unknown[]>('/ai/cover-letters'),
-      api.get<unknown[]>('/ai/interview/sessions'),
-    ])
-      .then(([resumes, coverLetters, interviews]) => {
+    Promise.all([api.get<unknown[]>('/ai/cover-letters'), api.get<unknown[]>('/ai/interview/sessions')])
+      .then(([coverLetters, interviews]) => {
         setCounts({
-          resumes: resumes.data.length,
           coverLetters: coverLetters.data.length,
           interviews: interviews.data.length,
         });
@@ -219,11 +216,11 @@ export function HomeTab({ user, onNavigate }: HomeTabProps) {
           </div>
         )}
 
-      {counts && (counts.resumes > 0 || counts.coverLetters > 0 || counts.interviews > 0) && (
+      {counts && (completeness > 0 || counts.coverLetters > 0 || counts.interviews > 0) && (
         <div className="mt-8 grid grid-cols-3 gap-4 border-t pt-6">
           <div className="text-center">
-            <p className="text-2xl font-semibold text-foreground">{counts.resumes}</p>
-            <p className="text-xs text-muted-foreground">Resumes generated</p>
+            <p className="text-2xl font-semibold text-foreground">{completeness}%</p>
+            <p className="text-xs text-muted-foreground">Resume ready</p>
           </div>
           <div className="text-center">
             <p className="text-2xl font-semibold text-foreground">{counts.coverLetters}</p>

@@ -31,7 +31,10 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <AuthProvider>{children}</AuthProvider>
-        <Toaster position="top-right" richColors closeButton />
+        {/* top-center, not top-right — the dashboard header has its own
+            controls (Log out) pinned to the top-right corner, and a toast
+            there visually collides with them. */}
+        <Toaster position="top-center" richColors closeButton />
       </body>
     </html>
   );

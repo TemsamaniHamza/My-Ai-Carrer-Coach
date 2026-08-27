@@ -132,7 +132,7 @@ export default function DashboardPage() {
               }}
             />
           )}
-          {activeTab === 'resume' && <ResumePanel />}
+          {activeTab === 'resume' && <ResumePanel user={user} />}
           {activeTab === 'cover-letter' && <CoverLetterPanel />}
           {activeTab === 'interview' && <InterviewChat onNavigate={setActiveTab} />}
         </div>
