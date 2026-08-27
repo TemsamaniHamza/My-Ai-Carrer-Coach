@@ -19,8 +19,8 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 // Free-tier Gemini quota is easy to exhaust — ThrottlerGuard here (using the
 // 'default' 10-req/60s config from AiModule's ThrottlerModule.forRoot) caps
-// each caller across resume/cover-letter generation so one runaway client
-// script can't burn through the whole app's quota. Applied only to this
+// each caller across cover-letter generation so one runaway client script
+// can't burn through the whole app's quota. Applied only to this
 // controller, not globally — see the comment in ai.module.ts. Every route
 // below that doesn't call Gemini (list/get/rename/delete) is explicitly
 // exempted via @SkipThrottle() — they never touch the AI quota, so sharing
@@ -28,57 +28,18 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 // history can get wrongly rate-limited (this happened during testing: rapid
 // POSTs ate the quota, then a plain GET of already-saved data came back
 // 429, which looked like the data had vanished).
+//
+// Resume generation used to live here too. It's now a deterministic
+// template rendered client-side from the live profile (see
+// ResumePanel/ResumeTemplate) — no AI call, no saved history, so there are
+// no /ai/resumes routes anymore. The Resume Prisma model/table is
+// deliberately left in place unused rather than dropped — it still holds
+// resumes generated before this change, and deleting that data wasn't
+// worth the risk for a routes cleanup.
 @UseGuards(AccessTokenGuard, ThrottlerGuard)
 @Controller('ai')
 export class AiController {
   constructor(private readonly aiService: AiService) {}
-
-  @Post('resumes')
-  async generateResume(@CurrentUser() user: { userId: string }) {
-    const resume = await this.aiService.generateResume(user.userId);
-    return {
-      id: resume.id,
-      name: resume.name,
-      markdown: resume.markdown,
-      createdAt: resume.createdAt,
-    };
-  }
-
-  @SkipThrottle()
-  @Get('resumes')
-  listResumes(@CurrentUser() user: { userId: string }) {
-    return this.aiService.listResumes(user.userId);
-  }
-
-  @SkipThrottle()
-  @Get('resumes/:id')
-  async getResume(@CurrentUser() user: { userId: string }, @Param('id') id: string) {
-    const resume = await this.aiService.getResume(user.userId, id);
-    return {
-      id: resume.id,
-      name: resume.name,
-      markdown: resume.markdown,
-      createdAt: resume.createdAt,
-    };
-  }
-
-  @SkipThrottle()
-  @Patch('resumes/:id')
-  async renameResume(
-    @CurrentUser() user: { userId: string },
-    @Param('id') id: string,
-    @Body() dto: RenameItemDto,
-  ) {
-    const resume = await this.aiService.renameResume(user.userId, id, dto.name);
-    return { id: resume.id, name: resume.name };
-  }
-
-  @SkipThrottle()
-  @Delete('resumes/:id')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  deleteResume(@CurrentUser() user: { userId: string }, @Param('id') id: string) {
-    return this.aiService.deleteResume(user.userId, id);
-  }
 
   @Post('cover-letters')
   async generateCoverLetter(

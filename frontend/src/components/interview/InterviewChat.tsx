@@ -2,6 +2,8 @@
 
 import { FormEvent, useEffect, useState } from 'react';
 import { AxiosError } from 'axios';
+import { ArrowRight, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import {
@@ -12,6 +14,21 @@ import {
   StartSessionResponse,
   SubmitAnswerResponse,
 } from '@/types/interview';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 type ChatState = 'idle' | 'active' | 'completed';
 
@@ -25,27 +42,31 @@ const INTERVIEW_TYPES: { value: InterviewType; label: string; description: strin
   { value: 'mixed', label: 'Mixed', description: 'A bit of both' },
 ];
 
-function Avatar({ role, initial }: { role: 'assistant' | 'user'; initial: string }) {
+function ChatAvatar({ role, initial }: { role: 'assistant' | 'user'; initial: string }) {
   return (
-    <span
-      className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
-        role === 'assistant' ? 'bg-blue-100 text-blue-700' : 'bg-blue-600 text-white'
-      }`}
-    >
-      {role === 'assistant' ? '🎤' : initial}
-    </span>
+    <Avatar className={`h-7 w-7 ${role === 'user' ? 'border' : ''}`}>
+      <AvatarFallback
+        className={
+          role === 'assistant'
+            ? 'bg-primary/10 text-sm text-primary'
+            : 'bg-primary text-xs font-semibold text-primary-foreground'
+        }
+      >
+        {role === 'assistant' ? '🎤' : initial}
+      </AvatarFallback>
+    </Avatar>
   );
 }
 
 function TypingIndicator() {
   return (
     <div className="flex items-center gap-2">
-      <Avatar role="assistant" initial="" />
-      <div className="flex items-center gap-1 rounded-md bg-gray-100 px-4 py-3">
+      <ChatAvatar role="assistant" initial="" />
+      <div className="flex items-center gap-1 rounded-md bg-muted px-4 py-3">
         {[0, 1, 2].map((i) => (
           <span
             key={i}
-            className="h-1.5 w-1.5 animate-bounce rounded-full bg-gray-400"
+            className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground"
             style={{ animationDelay: `${i * 150}ms` }}
           />
         ))}
@@ -94,6 +115,7 @@ export function InterviewChat({ onNavigate }: InterviewChatProps) {
   const [viewingHistoryId, setViewingHistoryId] = useState<string | null>(null);
   const [historyDetail, setHistoryDetail] = useState<InterviewSessionDetail | null>(null);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   useEffect(() => {
     api
@@ -124,7 +146,9 @@ export function InterviewChat({ onNavigate }: InterviewChatProps) {
       setProgress({ current: 1, total: 5 });
       setState('active');
     } catch (err) {
-      setError(extractErrorMessage(err));
+      const message = extractErrorMessage(err);
+      setError(message);
+      toast.error(message);
     } finally {
       setIsLoading(false);
     }
@@ -187,7 +211,9 @@ export function InterviewChat({ onNavigate }: InterviewChatProps) {
         refreshUser().catch(() => {});
       }
     } catch (err) {
-      setError(extractErrorMessage(err));
+      const message = extractErrorMessage(err);
+      setError(message);
+      toast.error(message);
       setAnswer(submittedAnswer); // give the answer back so it isn't lost on failure
     } finally {
       setIsLoading(false);
@@ -212,6 +238,7 @@ export function InterviewChat({ onNavigate }: InterviewChatProps) {
       setHistoryDetail(res.data);
     } catch {
       setError('Failed to load that interview');
+      toast.error('Failed to load that interview');
       setViewingHistoryId(null);
     } finally {
       setIsLoadingHistory(false);
@@ -223,8 +250,14 @@ export function InterviewChat({ onNavigate }: InterviewChatProps) {
     setHistoryDetail(null);
   }
 
-  async function handleDeleteHistory(id: string) {
-    if (!confirm("Delete this interview? This can't be undone.")) return;
+  function handleDeleteHistory(id: string) {
+    setPendingDeleteId(id);
+  }
+
+  async function confirmDeleteHistory() {
+    const id = pendingDeleteId;
+    setPendingDeleteId(null);
+    if (!id) return;
     setError(null);
     try {
       await api.delete(`/ai/interview/sessions/${id}`);
@@ -236,6 +269,7 @@ export function InterviewChat({ onNavigate }: InterviewChatProps) {
       }
     } catch {
       setError('Failed to delete that interview');
+      toast.error('Failed to delete that interview');
     }
   }
 
@@ -254,10 +288,35 @@ export function InterviewChat({ onNavigate }: InterviewChatProps) {
       setState('active');
     } catch {
       setError('Failed to resume that interview');
+      toast.error('Failed to resume that interview');
     } finally {
       setIsLoadingHistory(false);
     }
   }
+
+  const pendingDeleteItem = history.find((item) => item.id === pendingDeleteId) ?? null;
+
+  const deleteDialog = (
+    <AlertDialog
+      open={pendingDeleteId !== null}
+      onOpenChange={(open) => !open && setPendingDeleteId(null)}
+    >
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete this interview?</AlertDialogTitle>
+          <AlertDialogDescription>
+            {pendingDeleteItem?.firstQuestion
+              ? `"${pendingDeleteItem.firstQuestion}" will be permanently deleted. This can't be undone.`
+              : "This can't be undone."}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={confirmDeleteHistory}>Delete</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
 
   // --- Viewing a past session, read-only ---
   if (viewingHistoryId) {
@@ -265,26 +324,24 @@ export function InterviewChat({ onNavigate }: InterviewChatProps) {
     return (
       <div>
         <div className="mb-4 flex items-center justify-between">
-          <button
-            onClick={handleBackFromHistory}
-            className="text-sm font-medium text-gray-600 hover:underline"
-          >
+          <Button variant="link" className="h-auto p-0 text-muted-foreground" onClick={handleBackFromHistory}>
             ← Back to Interview Prep
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="link"
+            className="h-auto p-0 text-destructive"
             onClick={() => handleDeleteHistory(viewingHistoryId)}
-            className="text-sm font-medium text-red-600 hover:underline"
           >
             Delete this interview
-          </button>
+          </Button>
         </div>
 
-        {isLoadingHistory && <p className="text-sm text-gray-500">Loading…</p>}
+        {isLoadingHistory && <p className="text-sm text-muted-foreground">Loading…</p>}
 
         {historyDetail && (
           <>
             {summary && (
-              <div className="mb-4 rounded-md bg-gray-50 px-4 py-3 text-sm text-gray-800">
+              <div className="mb-4 rounded-md bg-muted px-4 py-3 text-sm text-foreground">
                 <span className="font-semibold">{summary.label}</span> — average score{' '}
                 {summary.average}/10
               </div>
@@ -296,6 +353,8 @@ export function InterviewChat({ onNavigate }: InterviewChatProps) {
             </div>
           </>
         )}
+
+        {deleteDialog}
       </div>
     );
   }
@@ -304,86 +363,92 @@ export function InterviewChat({ onNavigate }: InterviewChatProps) {
   if (state === 'idle') {
     return (
       <div>
-        <p className="mb-4 text-sm text-gray-500">
+        <p className="mb-4 text-sm text-muted-foreground">
           Practice a 5-question mock interview based on your saved profile. Gemini asks
           questions, evaluates each answer, and follows up based on what you say.
         </p>
 
-        <p className="mb-2 text-xs font-medium uppercase text-gray-400">Interview type</p>
+        <p className="mb-2 text-xs font-medium uppercase text-muted-foreground">Interview type</p>
         <div className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
           {INTERVIEW_TYPES.map((t) => (
-            <button
+            <Card
               key={t.value}
+              role="button"
+              tabIndex={0}
               onClick={() => setSelectedType(t.value)}
-              className={`rounded-md border p-3 text-left text-sm transition ${
-                selectedType === t.value
-                  ? 'border-blue-600 bg-blue-50'
-                  : 'border-gray-200 hover:border-gray-300'
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') setSelectedType(t.value);
+              }}
+              className={`cursor-pointer p-3 text-left text-sm shadow-none transition ${
+                selectedType === t.value ? 'border-primary bg-primary/5' : 'hover:border-muted-foreground/40'
               }`}
             >
-              <span className="block font-medium text-gray-900">{t.label}</span>
-              <span className="block text-xs text-gray-500">{t.description}</span>
-            </button>
+              <span className="block font-medium text-foreground">{t.label}</span>
+              <span className="block text-xs text-muted-foreground">{t.description}</span>
+            </Card>
           ))}
         </div>
 
         {error && (
-          <p className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
+          <p className="mb-4 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            {error}
+          </p>
         )}
-        <button
-          onClick={handleStart}
-          disabled={isLoading}
-          className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-50"
-        >
+        <Button onClick={handleStart} disabled={isLoading}>
           {isLoading ? 'Starting…' : 'Start Interview'}
-        </button>
+        </Button>
 
         {history.length > 0 && (
           <div className="mt-8">
-            <p className="mb-2 text-xs font-medium uppercase text-gray-400">Past Interviews</p>
+            <p className="mb-2 text-xs font-medium uppercase text-muted-foreground">
+              Past Interviews
+            </p>
             <div className="space-y-1">
               {history.map((item) => {
                 const isActive = item.status === 'active';
                 return (
                   <div
                     key={item.id}
-                    className="flex w-full items-center justify-between rounded-md border border-gray-200 px-3 py-2 text-sm"
+                    className="flex w-full items-center justify-between rounded-md border px-3 py-2 text-sm"
                   >
                     <button
                       onClick={() =>
                         isActive ? handleContinueHistory(item.id) : handleViewHistory(item.id)
                       }
-                      className="flex min-w-0 flex-1 items-center gap-3 text-left hover:text-blue-700"
+                      className="flex min-w-0 flex-1 items-center gap-3 text-left hover:text-primary"
                     >
-                      <span className="truncate text-gray-800">
+                      <span className="truncate text-foreground">
                         {item.firstQuestion ?? 'Interview'}
                       </span>
-                      <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-xs capitalize text-gray-600">
+                      <Badge variant="secondary" className="shrink-0 font-normal capitalize">
                         {item.type}
-                      </span>
-                      <span
-                        className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${
-                          isActive ? 'bg-amber-50 text-amber-700' : 'bg-green-50 text-green-700'
+                      </Badge>
+                      <Badge
+                        className={`shrink-0 border-transparent font-normal shadow-none hover:bg-current/10 ${
+                          isActive
+                            ? 'bg-amber-50 text-amber-700'
+                            : 'bg-green-50 text-green-700'
                         }`}
                       >
                         {item.status}
-                      </span>
+                      </Badge>
                     </button>
                     {isActive && (
-                      <button
+                      <Button
+                        size="sm"
+                        className="ml-3 h-7 shrink-0 whitespace-nowrap px-2.5 text-xs"
                         onClick={() => handleContinueHistory(item.id)}
-                        className="ml-3 shrink-0 whitespace-nowrap rounded-md bg-blue-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-blue-700"
                       >
                         Continue
-                      </button>
+                      </Button>
                     )}
                     <button
                       onClick={() => handleDeleteHistory(item.id)}
                       aria-label="Delete interview"
                       title="Delete"
-                      className="ml-2 shrink-0 text-gray-400 hover:text-red-600"
+                      className="ml-2 shrink-0 text-muted-foreground hover:text-destructive"
                     >
-                      ×
+                      <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   </div>
                 );
@@ -391,6 +456,8 @@ export function InterviewChat({ onNavigate }: InterviewChatProps) {
             </div>
           </div>
         )}
+
+        {deleteDialog}
       </div>
     );
   }
@@ -401,7 +468,7 @@ export function InterviewChat({ onNavigate }: InterviewChatProps) {
   return (
     <div>
       {progress && (
-        <p className="mb-4 text-xs font-medium uppercase text-gray-400">
+        <p className="mb-4 text-xs font-medium uppercase text-muted-foreground">
           Question {progress.current} of {progress.total}
         </p>
       )}
@@ -414,32 +481,29 @@ export function InterviewChat({ onNavigate }: InterviewChatProps) {
       </div>
 
       {error && (
-        <p className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
+        <p className="mb-4 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          {error}
+        </p>
       )}
 
       {state === 'active' && (
         <form onSubmit={handleSubmit} className="space-y-3">
-          <textarea
+          <Textarea
             rows={3}
             required
             value={answer}
             onChange={(e) => setAnswer(e.target.value)}
             placeholder="Type your answer…"
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-600 focus:outline-none"
           />
-          <button
-            type="submit"
-            disabled={isLoading || !answer.trim()}
-            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-50"
-          >
+          <Button type="submit" disabled={isLoading || !answer.trim()}>
             {isLoading ? 'Evaluating…' : 'Send Answer'}
-          </button>
+          </Button>
         </form>
       )}
 
       {state === 'completed' && (
         <div>
-          <div className="mb-3 rounded-md bg-green-50 px-4 py-3 text-sm text-green-800">
+          <div className="mb-3 rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
             <p className="font-semibold">Interview complete</p>
             {liveSummary && (
               <p className="mt-1">
@@ -448,21 +512,18 @@ export function InterviewChat({ onNavigate }: InterviewChatProps) {
             )}
           </div>
           <div className="flex gap-2">
-            <button
-              onClick={handleRestart}
-              className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
-            >
+            <Button variant="outline" onClick={handleRestart}>
               Start another interview
-            </button>
-            <button
-              onClick={() => onNavigate('home')}
-              className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
-            >
+            </Button>
+            <Button onClick={() => onNavigate('home')}>
               See your Strengths &amp; Weaknesses
-            </button>
+              <ArrowRight className="h-4 w-4" />
+            </Button>
           </div>
         </div>
       )}
+
+      {deleteDialog}
     </div>
   );
 }
@@ -477,8 +538,8 @@ function MessageBubble({
   if (message.role === 'assistant') {
     return (
       <div className="flex items-start gap-2">
-        <Avatar role="assistant" initial="" />
-        <div className="rounded-md bg-gray-100 px-4 py-3 text-sm text-gray-800">
+        <ChatAvatar role="assistant" initial="" />
+        <div className="rounded-md bg-muted px-4 py-3 text-sm text-foreground">
           {message.content}
         </div>
       </div>
@@ -488,17 +549,17 @@ function MessageBubble({
   return (
     <div className="flex items-start justify-end gap-2">
       <div className="max-w-[85%]">
-        <div className="rounded-md border border-gray-200 px-4 py-3 text-sm text-gray-800">
+        <div className="rounded-md border px-4 py-3 text-sm text-foreground">
           {message.content}
         </div>
         {message.evaluation && (
-          <div className="mt-2 rounded-md bg-blue-50 px-4 py-3 text-sm text-blue-900">
+          <div className="mt-2 rounded-md bg-primary/10 px-4 py-3 text-sm text-foreground">
             <span className="font-semibold">Score: {message.evaluation.score}/10</span>
             <p className="mt-1">{message.evaluation.feedback}</p>
           </div>
         )}
       </div>
-      <Avatar role="user" initial={userInitial} />
+      <ChatAvatar role="user" initial={userInitial} />
     </div>
   );
 }

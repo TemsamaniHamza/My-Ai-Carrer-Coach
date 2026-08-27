@@ -2,7 +2,22 @@
 
 import { FormEvent, useEffect, useState } from 'react';
 import { AxiosError } from 'axios';
+import { toast } from 'sonner';
+import { Download, Pencil, Trash2 } from 'lucide-react';
 import { api } from '@/lib/api';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface CoverLetterListItem {
   id: string;
@@ -21,6 +36,7 @@ export function CoverLetterPanel() {
   const [isLoadingOne, setIsLoadingOne] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draftName, setDraftName] = useState('');
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   function fetchHistory() {
     return api
@@ -58,9 +74,10 @@ export function CoverLetterPanel() {
     } catch (err) {
       const axiosErr = err as AxiosError<{ message?: string | string[] }>;
       const message = axiosErr.response?.data?.message;
-      setError(
-        Array.isArray(message) ? message.join(', ') : message ?? 'Failed to generate cover letter',
-      );
+      const text =
+        Array.isArray(message) ? message.join(', ') : message ?? 'Failed to generate cover letter';
+      setError(text);
+      toast.error(text);
     } finally {
       setIsGenerating(false);
     }
@@ -76,6 +93,7 @@ export function CoverLetterPanel() {
       setSelectedId(res.data.id);
     } catch {
       setError('Failed to load that cover letter');
+      toast.error('Failed to load that cover letter');
     } finally {
       setIsLoadingOne(false);
     }
@@ -95,11 +113,18 @@ export function CoverLetterPanel() {
       setHistory((prev) => prev.map((item) => (item.id === id ? { ...item, name } : item)));
     } catch {
       setError('Failed to rename that cover letter');
+      toast.error('Failed to rename that cover letter');
     }
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm('Delete this saved cover letter? This can\'t be undone.')) return;
+  function handleDelete(id: string) {
+    setPendingDeleteId(id);
+  }
+
+  async function confirmDelete() {
+    const id = pendingDeleteId;
+    setPendingDeleteId(null);
+    if (!id) return;
     setError(null);
     try {
       await api.delete(`/ai/cover-letters/${id}`);
@@ -116,6 +141,7 @@ export function CoverLetterPanel() {
       }
     } catch {
       setError('Failed to delete that cover letter');
+      toast.error('Failed to delete that cover letter');
     }
   }
 
@@ -125,39 +151,36 @@ export function CoverLetterPanel() {
     window.print();
   }
 
+  const pendingDeleteItem = history.find((item) => item.id === pendingDeleteId) ?? null;
+
   return (
     <div>
       <form onSubmit={handleSubmit} className="mb-4 space-y-3 print:hidden">
-        <label htmlFor="jobDescription" className="block text-sm font-medium text-gray-700">
-          Paste the job description
-        </label>
-        <textarea
+        <Label htmlFor="jobDescription">Paste the job description</Label>
+        <Textarea
           id="jobDescription"
           rows={8}
           required
           value={jobDescription}
           onChange={(e) => setJobDescription(e.target.value)}
           placeholder="Paste the full job posting here…"
-          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-600 focus:outline-none"
         />
-        <button
-          type="submit"
-          disabled={isGenerating || !jobDescription.trim()}
-          className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-50"
-        >
+        <Button type="submit" disabled={isGenerating || !jobDescription.trim()}>
           {isGenerating ? 'Generating…' : 'Generate Cover Letter'}
-        </button>
+        </Button>
       </form>
 
       {history.length > 0 && (
         <div className="mb-4 space-y-1 print:hidden">
-          <p className="mb-2 text-xs font-medium uppercase text-gray-400">Past Cover Letters</p>
+          <p className="mb-2 text-xs font-medium uppercase text-muted-foreground">
+            Past Cover Letters
+          </p>
           {history.map((item) => (
             <div
               key={item.id}
               data-testid="cover-letter-history-item"
               className={`flex items-center gap-2 rounded-md border px-3 py-2 text-sm ${
-                item.id === selectedId ? 'border-blue-600 bg-blue-50' : 'border-gray-200'
+                item.id === selectedId ? 'border-primary bg-primary/5' : ''
               }`}
             >
               {editingId === item.id ? (
@@ -167,13 +190,13 @@ export function CoverLetterPanel() {
                   onChange={(e) => setDraftName(e.target.value)}
                   onBlur={() => handleSaveRename(item.id)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSaveRename(item.id)}
-                  className="flex-1 rounded border border-gray-300 px-2 py-1 text-sm focus:border-blue-600 focus:outline-none"
+                  className="flex-1 rounded border border-input bg-transparent px-2 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 />
               ) : (
                 <button
                   onClick={() => handleSelectHistoryItem(item.id)}
                   title={item.preview}
-                  className="flex-1 truncate text-left text-gray-800 hover:underline"
+                  className="flex-1 truncate text-left text-foreground hover:underline"
                 >
                   {item.name}
                 </button>
@@ -182,17 +205,17 @@ export function CoverLetterPanel() {
                 onClick={() => startRename(item)}
                 aria-label={`Rename ${item.name}`}
                 title="Rename"
-                className="shrink-0 text-gray-400 hover:text-gray-700"
+                className="shrink-0 text-muted-foreground hover:text-foreground"
               >
-                ✎
+                <Pencil className="h-3.5 w-3.5" />
               </button>
               <button
                 onClick={() => handleDelete(item.id)}
                 aria-label={`Delete ${item.name}`}
                 title="Delete"
-                className="shrink-0 text-gray-400 hover:text-red-600"
+                className="shrink-0 text-muted-foreground hover:text-destructive"
               >
-                ×
+                <Trash2 className="h-3.5 w-3.5" />
               </button>
             </div>
           ))}
@@ -200,7 +223,7 @@ export function CoverLetterPanel() {
       )}
 
       {error && (
-        <p className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 print:hidden">
+        <p className="mb-4 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive print:hidden">
           {error}
         </p>
       )}
@@ -208,27 +231,45 @@ export function CoverLetterPanel() {
       {letter && !isLoadingOne && (
         <div>
           <div className="mb-2 flex justify-end gap-2 print:hidden">
-            <button
-              onClick={handleDownloadPdf}
-              className="whitespace-nowrap rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
-            >
+            <Button variant="outline" onClick={handleDownloadPdf}>
+              <Download className="h-4 w-4" />
               Download PDF
-            </button>
+            </Button>
           </div>
-          <div className="whitespace-pre-wrap rounded-md border border-gray-200 p-6 text-sm text-gray-800 print:border-0 print:p-0">
+          <div className="whitespace-pre-wrap rounded-md border p-6 text-sm text-foreground print:border-0 print:p-0">
             {letter}
           </div>
         </div>
       )}
 
       {!letter && !isLoadingOne && !isGenerating && (
-        <div className="rounded-md border border-dashed border-gray-300 p-8 text-center print:hidden">
-          <p className="text-sm text-gray-500">
+        <div className="rounded-md border border-dashed p-8 text-center print:hidden">
+          <p className="text-sm text-muted-foreground">
             No cover letter yet — paste a job description above and click &ldquo;Generate Cover
             Letter&rdquo;.
           </p>
         </div>
       )}
+
+      <AlertDialog
+        open={pendingDeleteId !== null}
+        onOpenChange={(open) => !open && setPendingDeleteId(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this cover letter?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingDeleteItem
+                ? `"${pendingDeleteItem.name}" will be permanently deleted. This can't be undone.`
+                : "This can't be undone."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -1,8 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { ArrowRight, FileText, Mail, Mic, User } from 'lucide-react';
 import { api } from '@/lib/api';
 import { UserProfile } from '@/types/user';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
 
 type Tab = 'home' | 'profile' | 'resume' | 'cover-letter' | 'interview';
 
@@ -13,7 +17,7 @@ interface HomeTabProps {
 
 interface FeatureCard {
   tab: Tab;
-  icon: string;
+  icon: typeof User;
   title: string;
   description: string;
   cta: string;
@@ -22,31 +26,24 @@ interface FeatureCard {
 const FEATURES: FeatureCard[] = [
   {
     tab: 'profile',
-    icon: '👤',
+    icon: User,
     title: 'Profile',
     description: 'Your skills, experience, and education — the data source everything else builds on.',
     cta: 'Edit profile',
   },
   {
     tab: 'resume',
-    icon: '📄',
+    icon: FileText,
     title: 'Resume',
     description: 'Generate a polished, ATS-friendly resume from your profile in one click.',
     cta: 'Generate a resume',
   },
   {
     tab: 'cover-letter',
-    icon: '✉️',
+    icon: Mail,
     title: 'Cover Letter',
     description: 'Paste a job description and get a cover letter tailored to it.',
     cta: 'Write a cover letter',
-  },
-  {
-    tab: 'interview',
-    icon: '🎤',
-    title: 'Interview Prep',
-    description: 'Practice a 5-question mock interview with real-time AI feedback on each answer.',
-    cta: 'Start practicing',
   },
 ];
 
@@ -91,69 +88,104 @@ export function HomeTab({ user, onNavigate }: HomeTabProps) {
   return (
     <div>
       <div className="mb-8">
-        <h2 className="text-xl font-semibold text-gray-900">
+        <h2 className="text-xl font-semibold text-foreground">
           Welcome to AI Career Coach, {user.name.split(' ')[0]}
         </h2>
-        <p className="mt-1 max-w-2xl text-sm text-gray-500">
+        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
           Build your profile once, then let AI turn it into a resume, a tailored cover letter, and
           practice interview sessions — all from the same source of truth.
         </p>
       </div>
 
       {completeness < 100 && (
-        <div className="mb-6 rounded-md border border-amber-200 bg-amber-50 px-4 py-3">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-amber-800">
-              Your profile is <span className="font-semibold">{completeness}%</span> complete —
-              the more you fill in, the better your generated resume and cover letters will be.
-            </p>
-            <button
-              onClick={() => onNavigate('profile')}
-              className="whitespace-nowrap rounded-md bg-amber-800 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-900"
-            >
-              Complete it
-            </button>
-          </div>
-          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-amber-200">
-            <div
-              className="h-full rounded-full bg-amber-800 transition-all"
-              style={{ width: `${completeness}%` }}
-            />
-          </div>
-        </div>
+        <Card className="mb-6 border-amber-200 bg-amber-50">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between gap-4">
+              <p className="text-sm text-amber-800">
+                Your profile is <span className="font-semibold">{completeness}%</span> complete —
+                the more you fill in, the better your generated resume and cover letters will be.
+              </p>
+              <Button
+                size="sm"
+                onClick={() => onNavigate('profile')}
+                className="shrink-0 whitespace-nowrap bg-amber-800 text-white hover:bg-amber-900"
+              >
+                Complete it
+              </Button>
+            </div>
+            <Progress value={completeness} className="mt-3 h-1.5 bg-amber-200 [&>div]:bg-amber-800" />
+          </CardContent>
+        </Card>
       )}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        {FEATURES.map((feature) => (
-          <button
-            key={feature.tab}
-            onClick={() => onNavigate(feature.tab)}
-            className="group flex flex-col items-start rounded-lg border border-gray-200 p-5 text-left transition hover:border-blue-600 hover:shadow-sm"
-          >
-            <span className="text-2xl">{feature.icon}</span>
-            <span className="mt-3 font-semibold text-gray-900">{feature.title}</span>
-            <span className="mt-1 text-sm text-gray-500">{feature.description}</span>
-            <span className="mt-3 text-sm font-medium text-blue-700 group-hover:underline">
-              {feature.cta} →
+      {/* Interview Prep is the flagship feature — a hero card, not just
+          another grid tile, so it's the first thing that pulls the eye. */}
+      <button
+        onClick={() => onNavigate('interview')}
+        className="group relative mb-6 flex w-full flex-col items-start overflow-hidden rounded-xl border border-primary/20 bg-gradient-to-br from-primary via-primary to-indigo-600 p-6 text-left shadow-md transition hover:shadow-lg sm:flex-row sm:items-center sm:justify-between"
+      >
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl transition group-hover:scale-125"
+        />
+        <div className="relative flex items-start gap-4">
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white/15 text-white">
+            <Mic className="h-6 w-6" />
+          </span>
+          <div>
+            <span className="mb-1 inline-block rounded-full bg-white/15 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white">
+              Flagship feature
             </span>
-          </button>
-        ))}
+            <h3 className="text-lg font-semibold text-white">Interview Prep</h3>
+            <p className="mt-1 max-w-md text-sm text-white/85">
+              Practice a live mock interview with real-time AI feedback and scoring on every
+              answer — the fastest way to walk in ready.
+            </p>
+          </div>
+        </div>
+        <span className="relative mt-4 inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md bg-white px-4 py-2 text-sm font-semibold text-primary shadow-sm transition group-hover:gap-2.5 sm:mt-0">
+          Start practicing
+          <ArrowRight className="h-4 w-4" />
+        </span>
+      </button>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        {FEATURES.map((feature) => {
+          const Icon = feature.icon;
+          return (
+            <button
+              key={feature.tab}
+              onClick={() => onNavigate(feature.tab)}
+              className="group flex flex-col items-start rounded-lg border p-5 text-left transition hover:border-primary hover:shadow-sm"
+            >
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <Icon className="h-5 w-5" />
+              </span>
+              <span className="mt-3 font-semibold text-foreground">{feature.title}</span>
+              <span className="mt-1 text-sm text-muted-foreground">{feature.description}</span>
+              <span className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary group-hover:underline">
+                {feature.cta}
+                <ArrowRight className="h-3.5 w-3.5" />
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {user.strengthsWeaknesses &&
         (user.strengthsWeaknesses.strengths.length > 0 ||
           user.strengthsWeaknesses.weaknesses.length > 0) && (
-          <div className="mt-8 border-t border-gray-100 pt-6">
+          <div className="mt-8 border-t pt-6">
             <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-gray-900">Strengths &amp; Weaknesses</h3>
+              <h3 className="text-sm font-semibold text-foreground">Strengths &amp; Weaknesses</h3>
               <button
                 onClick={() => onNavigate('interview')}
-                className="text-xs font-medium text-blue-700 hover:underline"
+                className="text-xs font-medium text-primary hover:underline"
               >
                 Practice more →
               </button>
             </div>
-            <p className="mb-3 text-xs text-gray-400">
+            <p className="mb-3 text-xs text-muted-foreground">
               Based on your interview practice so far — updates after each completed interview.
             </p>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -188,18 +220,18 @@ export function HomeTab({ user, onNavigate }: HomeTabProps) {
         )}
 
       {counts && (counts.resumes > 0 || counts.coverLetters > 0 || counts.interviews > 0) && (
-        <div className="mt-8 grid grid-cols-3 gap-4 border-t border-gray-100 pt-6">
+        <div className="mt-8 grid grid-cols-3 gap-4 border-t pt-6">
           <div className="text-center">
-            <p className="text-2xl font-semibold text-gray-900">{counts.resumes}</p>
-            <p className="text-xs text-gray-500">Resumes generated</p>
+            <p className="text-2xl font-semibold text-foreground">{counts.resumes}</p>
+            <p className="text-xs text-muted-foreground">Resumes generated</p>
           </div>
           <div className="text-center">
-            <p className="text-2xl font-semibold text-gray-900">{counts.coverLetters}</p>
-            <p className="text-xs text-gray-500">Cover letters written</p>
+            <p className="text-2xl font-semibold text-foreground">{counts.coverLetters}</p>
+            <p className="text-xs text-muted-foreground">Cover letters written</p>
           </div>
           <div className="text-center">
-            <p className="text-2xl font-semibold text-gray-900">{counts.interviews}</p>
-            <p className="text-xs text-gray-500">Interviews practiced</p>
+            <p className="text-2xl font-semibold text-foreground">{counts.interviews}</p>
+            <p className="text-xs text-muted-foreground">Interviews practiced</p>
           </div>
         </div>
       )}

@@ -3,7 +3,20 @@
 import { useEffect, useState } from 'react';
 import { AxiosError } from 'axios';
 import ReactMarkdown from 'react-markdown';
+import { toast } from 'sonner';
+import { Download, Pencil, Sparkles, Trash2 } from 'lucide-react';
 import { api } from '@/lib/api';
+import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface ResumeListItem {
   id: string;
@@ -21,6 +34,7 @@ export function ResumePanel() {
   const [isLoadingOne, setIsLoadingOne] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draftName, setDraftName] = useState('');
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   function fetchHistory() {
     return api
@@ -57,9 +71,11 @@ export function ResumePanel() {
     } catch (err) {
       const axiosErr = err as AxiosError<{ message?: string | string[] }>;
       const message = axiosErr.response?.data?.message;
-      setError(
-        Array.isArray(message) ? message.join(', ') : message ?? 'Failed to generate resume',
-      );
+      const description = Array.isArray(message)
+        ? message.join(', ')
+        : message ?? 'Failed to generate resume';
+      setError(description);
+      toast.error(description);
     } finally {
       setIsGenerating(false);
     }
@@ -93,12 +109,18 @@ export function ResumePanel() {
       await api.patch(`/ai/resumes/${id}`, { name });
       setHistory((prev) => prev.map((item) => (item.id === id ? { ...item, name } : item)));
     } catch {
-      setError('Failed to rename that resume');
+      toast.error('Failed to rename that resume');
     }
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm('Delete this saved resume? This can\'t be undone.')) return;
+  function requestDelete(id: string) {
+    setPendingDeleteId(id);
+  }
+
+  async function confirmDelete() {
+    const id = pendingDeleteId;
+    setPendingDeleteId(null);
+    if (!id) return;
     setError(null);
     try {
       await api.delete(`/ai/resumes/${id}`);
@@ -116,7 +138,7 @@ export function ResumePanel() {
         }
       }
     } catch {
-      setError('Failed to delete that resume');
+      toast.error('Failed to delete that resume');
     }
   }
 
@@ -131,37 +153,32 @@ export function ResumePanel() {
   return (
     <div>
       <div className="mb-4 flex items-center justify-between gap-2 print:hidden">
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-muted-foreground">
           Generates a resume from your saved profile — fill in the Profile tab first.
         </p>
         <div className="flex shrink-0 gap-2">
           {markdown && (
-            <button
-              onClick={handleDownloadPdf}
-              className="whitespace-nowrap rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
-            >
+            <Button variant="outline" onClick={handleDownloadPdf}>
+              <Download />
               Download PDF
-            </button>
+            </Button>
           )}
-          <button
-            onClick={handleGenerate}
-            disabled={isGenerating}
-            className="whitespace-nowrap rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-50"
-          >
+          <Button onClick={handleGenerate} disabled={isGenerating}>
+            <Sparkles />
             {isGenerating ? 'Generating…' : 'Generate Resume'}
-          </button>
+          </Button>
         </div>
       </div>
 
       {history.length > 0 && (
         <div className="mb-4 space-y-1 print:hidden">
-          <p className="mb-2 text-xs font-medium uppercase text-gray-400">Past Resumes</p>
+          <p className="mb-2 text-xs font-medium uppercase text-muted-foreground">Past Resumes</p>
           {history.map((item) => (
             <div
               key={item.id}
               data-testid="resume-history-item"
               className={`flex items-center gap-2 rounded-md border px-3 py-2 text-sm ${
-                item.id === selectedId ? 'border-blue-600 bg-blue-50' : 'border-gray-200'
+                item.id === selectedId ? 'border-primary bg-primary/5' : ''
               }`}
             >
               {editingId === item.id ? (
@@ -171,13 +188,13 @@ export function ResumePanel() {
                   onChange={(e) => setDraftName(e.target.value)}
                   onBlur={() => handleSaveRename(item.id)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSaveRename(item.id)}
-                  className="flex-1 rounded border border-gray-300 px-2 py-1 text-sm focus:border-blue-600 focus:outline-none"
+                  className="flex-1 rounded border border-input bg-transparent px-2 py-1 text-sm outline-none focus:border-ring"
                 />
               ) : (
                 <button
                   onClick={() => handleSelectHistoryItem(item.id)}
                   title={item.preview}
-                  className="flex-1 truncate text-left text-gray-800 hover:underline"
+                  className="flex-1 truncate text-left text-foreground hover:underline"
                 >
                   {item.name}
                 </button>
@@ -186,17 +203,17 @@ export function ResumePanel() {
                 onClick={() => startRename(item)}
                 aria-label={`Rename ${item.name}`}
                 title="Rename"
-                className="shrink-0 text-gray-400 hover:text-gray-700"
+                className="shrink-0 text-muted-foreground hover:text-foreground"
               >
-                ✎
+                <Pencil className="h-3.5 w-3.5" />
               </button>
               <button
-                onClick={() => handleDelete(item.id)}
+                onClick={() => requestDelete(item.id)}
                 aria-label={`Delete ${item.name}`}
                 title="Delete"
-                className="shrink-0 text-gray-400 hover:text-red-600"
+                className="shrink-0 text-muted-foreground hover:text-destructive"
               >
-                ×
+                <Trash2 className="h-3.5 w-3.5" />
               </button>
             </div>
           ))}
@@ -204,24 +221,42 @@ export function ResumePanel() {
       )}
 
       {error && (
-        <p className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 print:hidden">
+        <p className="mb-4 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive print:hidden">
           {error}
         </p>
       )}
 
       {markdown && !isLoadingOne && (
-        <div className="prose prose-sm max-w-none rounded-md border border-gray-200 p-6 print:border-0 print:p-0">
+        <div className="prose prose-sm max-w-none rounded-md border p-6 print:border-0 print:p-0">
           <ReactMarkdown>{markdown}</ReactMarkdown>
         </div>
       )}
 
       {!markdown && !isLoadingOne && !isGenerating && (
-        <div className="rounded-md border border-dashed border-gray-300 p-8 text-center print:hidden">
-          <p className="text-sm text-gray-500">
+        <div className="rounded-md border border-dashed p-8 text-center print:hidden">
+          <p className="text-sm text-muted-foreground">
             No resume yet — click &ldquo;Generate Resume&rdquo; above to create your first one.
           </p>
         </div>
       )}
+
+      <AlertDialog open={pendingDeleteId !== null} onOpenChange={(open) => !open && setPendingDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this resume?</AlertDialogTitle>
+            <AlertDialogDescription>This can&apos;t be undone.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

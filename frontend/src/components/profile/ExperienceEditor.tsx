@@ -1,6 +1,11 @@
 'use client';
 
+import { Plus, Trash2 } from 'lucide-react';
 import { ExperienceItem } from '@/types/user';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 
 interface ExperienceEditorProps {
   items: ExperienceItem[];
@@ -26,63 +31,58 @@ export function ExperienceEditor({ items, onChange }: ExperienceEditorProps) {
   return (
     <div>
       <div className="mb-2 flex items-center justify-between">
-        <label className="block text-sm font-medium text-gray-700">Experience</label>
-        <button
-          type="button"
-          onClick={addItem}
-          className="text-sm font-medium text-blue-700 underline"
-        >
-          + Add experience
-        </button>
+        <Label>Experience</Label>
+        <Button type="button" variant="link" size="sm" onClick={addItem} className="h-auto p-0">
+          <Plus className="h-3.5 w-3.5" />
+          Add experience
+        </Button>
       </div>
 
       {items.length === 0 && (
-        <p className="text-sm text-gray-400">No experience added yet.</p>
+        <p className="text-sm text-muted-foreground">No experience added yet.</p>
       )}
 
       <div className="space-y-4">
         {items.map((item, index) => (
-          <div key={index} className="rounded-md border border-gray-300 p-4">
+          <div key={index} className="rounded-md border p-4">
             <div className="mb-3 flex items-center justify-between">
-              <span className="text-xs font-medium uppercase text-gray-400">
+              <span className="text-xs font-medium uppercase text-muted-foreground">
                 Entry {index + 1}
               </span>
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                size="sm"
                 onClick={() => removeItem(index)}
-                className="text-xs font-medium text-red-600 hover:text-red-800"
+                className="h-auto p-0 text-xs font-medium text-destructive hover:bg-transparent hover:text-destructive/80"
               >
+                <Trash2 className="h-3.5 w-3.5" />
                 Remove
-              </button>
+              </Button>
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <input
-                type="text"
+              <Input
                 placeholder="Company"
                 value={item.company}
                 onChange={(e) => updateItem(index, 'company', e.target.value)}
-                className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-600 focus:outline-none"
               />
-              <input
-                type="text"
+              <Input
                 placeholder="Role"
                 value={item.role}
                 onChange={(e) => updateItem(index, 'role', e.target.value)}
-                className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-600 focus:outline-none"
               />
-              <input
-                type="text"
+              <Input
                 placeholder="Duration (e.g. 2022–2024)"
                 value={item.duration}
                 onChange={(e) => updateItem(index, 'duration', e.target.value)}
-                className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-600 focus:outline-none sm:col-span-2"
+                className="sm:col-span-2"
               />
-              <textarea
+              <Textarea
                 placeholder="Description (optional)"
                 value={item.description ?? ''}
                 onChange={(e) => updateItem(index, 'description', e.target.value)}
                 rows={2}
-                className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-600 focus:outline-none sm:col-span-2"
+                className="sm:col-span-2"
               />
             </div>
           </div>

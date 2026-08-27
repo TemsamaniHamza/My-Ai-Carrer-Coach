@@ -1,6 +1,9 @@
 'use client';
 
 import { KeyboardEvent, useState } from 'react';
+import { X } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 
 interface TagListEditorProps {
   label: string;
@@ -36,23 +39,20 @@ export function TagListEditor({ label, placeholder, items, onChange }: TagListEd
 
   return (
     <div>
-      <label className="mb-1 block text-sm font-medium text-gray-700">{label}</label>
-      <div className="flex flex-wrap gap-2 rounded-md border border-gray-300 p-2">
+      <Label className="mb-1.5 block">{label}</Label>
+      <div className="flex flex-wrap gap-2 rounded-md border border-input bg-transparent p-2">
         {items.map((item, index) => (
-          <span
-            key={item}
-            className="flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-800"
-          >
+          <Badge key={item} variant="secondary" className="gap-1 py-1 pl-3 pr-1.5 text-sm font-normal">
             {item}
             <button
               type="button"
               onClick={() => removeItem(index)}
               aria-label={`Remove ${item}`}
-              className="text-gray-400 hover:text-gray-700"
+              className="rounded-full text-muted-foreground hover:text-foreground"
             >
-              ×
+              <X className="h-3 w-3" />
             </button>
-          </span>
+          </Badge>
         ))}
         <input
           type="text"
@@ -61,10 +61,10 @@ export function TagListEditor({ label, placeholder, items, onChange }: TagListEd
           onKeyDown={handleKeyDown}
           onBlur={addItem}
           placeholder={placeholder}
-          className="min-w-[8rem] flex-1 border-none px-1 py-1 text-sm focus:outline-none"
+          className="min-w-[8rem] flex-1 border-none bg-transparent px-1 py-1 text-sm outline-none placeholder:text-muted-foreground"
         />
       </div>
-      <p className="mt-1 text-xs text-gray-400">Press Enter or comma to add.</p>
+      <p className="mt-1 text-xs text-muted-foreground">Press Enter or comma to add.</p>
     </div>
   );
 }
