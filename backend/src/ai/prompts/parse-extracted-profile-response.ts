@@ -24,11 +24,14 @@ function isValidItem(item: unknown, requiredKeys: string[]): item is RawItem {
  * failure here has to surface as a real error, not vanish.
  */
 export function parseExtractedProfileResponse(raw: string): ExtractedProfile {
-  const cleaned = raw
-    .trim()
-    .replace(/^```(?:json)?/i, '')
-    .replace(/```$/, '')
-    .trim();
+  // Gemini's "no commentary" instruction isn't always followed — a
+  // preamble like "Here is the extracted profile:\n\n```json\n{...}\n```"
+  // is common enough that anchoring the fence-strip to the very start of
+  // the string (as a plain ^-anchored replace would) misses it entirely.
+  // Search for a fenced block anywhere in the response instead, and only
+  // fall back to trimming the whole string if no fence is found at all.
+  const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  const cleaned = (fenced ? fenced[1] : raw).trim();
 
   let parsed: unknown;
   try {
