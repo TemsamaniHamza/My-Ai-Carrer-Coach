@@ -15,5 +15,8 @@ import { InterviewController } from './interview.controller';
   imports: [ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 10 }])],
   controllers: [AiController, InterviewController],
   providers: [AiService, GeminiService, InterviewService],
+  // GeminiService is exported so UsersModule can reuse it for resume-import
+  // extraction, rather than standing up a second Gemini client.
+  exports: [GeminiService],
 })
 export class AiModule {}

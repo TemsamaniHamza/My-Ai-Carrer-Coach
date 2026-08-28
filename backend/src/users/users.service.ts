@@ -1,12 +1,23 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { stripPassword } from '../common/strip-password.util';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { GeminiService } from '../ai/gemini.service';
+import {
+  extractResumeText,
+  isSupportedResumeFile,
+  MAX_RESUME_FILE_BYTES,
+} from './utils/extract-resume-text.util';
+import { buildExtractProfilePrompt } from '../ai/prompts/extract-profile-from-resume.prompt';
+import { parseExtractedProfileResponse } from '../ai/prompts/parse-extracted-profile-response';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly gemini: GeminiService,
+  ) {}
 
   async getProfile(userId: string) {
     const user = await this.prisma.user.findUniqueOrThrow({
@@ -36,5 +47,33 @@ export class UsersService {
       data,
     });
     return stripPassword(user);
+  }
+
+  /**
+   * Extracts structured profile fields from an uploaded resume (PDF/DOCX).
+   * Deliberately returns the extracted data instead of writing it — the
+   * caller decides whether to apply it, so an upload never silently
+   * overwrites a profile the user already filled in by hand.
+   */
+  async extractProfileFromResume(file: Express.Multer.File) {
+    if (!file) {
+      throw new BadRequestException('No file uploaded.');
+    }
+    if (file.size > MAX_RESUME_FILE_BYTES) {
+      throw new BadRequestException('That file is too large — resumes must be under 5MB.');
+    }
+    if (!isSupportedResumeFile(file.mimetype)) {
+      throw new BadRequestException('Unsupported file type — upload a PDF or DOCX resume.');
+    }
+
+    const text = await extractResumeText(file.buffer, file.mimetype);
+    if (!text.trim()) {
+      throw new BadRequestException(
+        "Couldn't find any text in that file — it may be a scanned image rather than text.",
+      );
+    }
+
+    const raw = await this.gemini.generateText(buildExtractProfilePrompt(text));
+    return parseExtractedProfileResponse(raw);
   }
 }

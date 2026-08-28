@@ -42,3 +42,14 @@ export interface UpdateProfileInput {
   experience?: ExperienceItem[];
   education?: EducationItem[];
 }
+
+/** Matches backend ExtractedProfile — the result of POST /users/me/resume-import. */
+export interface ExtractedProfile {
+  name?: string;
+  title?: string;
+  summary?: string;
+  skills: string[];
+  languages: string[];
+  experience: ExperienceItem[];
+  education: EducationItem[];
+}

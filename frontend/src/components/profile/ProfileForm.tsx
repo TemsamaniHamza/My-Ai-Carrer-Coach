@@ -3,11 +3,13 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { AxiosError } from 'axios';
 import { toast } from 'sonner';
+import { Upload } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { EducationItem, ExperienceItem, UserProfile } from '@/types/user';
+import { EducationItem, ExperienceItem, ExtractedProfile, UserProfile } from '@/types/user';
 import { TagListEditor } from './TagListEditor';
 import { ExperienceEditor } from './ExperienceEditor';
 import { EducationEditor } from './EducationEditor';
+import { ResumeImportDialog } from './ResumeImportDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -49,6 +51,7 @@ export function ProfileForm({ user, onNavigate, registerLeaveGuard }: ProfileFor
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<Tab | null>(null);
+  const [isImportOpen, setIsImportOpen] = useState(false);
 
   // Snapshot of the last-saved shape, compared against current field state to
   // decide whether there's anything a navigation away would actually lose.
@@ -96,6 +99,22 @@ export function ProfileForm({ user, onNavigate, registerLeaveGuard }: ProfileFor
     setPendingNavigation(null);
   }
 
+  // Merges only the fields the user kept checked in the import dialog into
+  // local (unsaved) form state — arrays replace outright (skills/languages/
+  // experience/education), matching what the user saw and approved in the
+  // review step, rather than trying to de-dupe/merge with what's already
+  // there. Nothing here touches the backend; the existing Save button and
+  // dirty-tracking take over from here.
+  function applyExtracted(fields: Partial<ExtractedProfile>) {
+    if (fields.name !== undefined) setName(fields.name);
+    if (fields.title !== undefined) setTitle(fields.title);
+    if (fields.summary !== undefined) setSummary(fields.summary);
+    if (fields.skills !== undefined) setSkills(fields.skills);
+    if (fields.languages !== undefined) setLanguages(fields.languages);
+    if (fields.experience !== undefined) setExperience(fields.experience);
+    if (fields.education !== undefined) setEducation(fields.education);
+  }
+
   // Re-registers on every render (deliberately not memoized) so the guard
   // the dashboard holds always closes over the current isDirty — otherwise
   // a stale guard from an earlier render could wave through a real
@@ -141,6 +160,22 @@ export function ProfileForm({ user, onNavigate, registerLeaveGuard }: ProfileFor
   return (
     <>
       <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-sm text-muted-foreground">
+            Fill this in by hand, or import it from an existing resume.
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setIsImportOpen(true)}
+            className="shrink-0"
+          >
+            <Upload />
+            Import from resume
+          </Button>
+        </div>
+
         {isDirty && (
           <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
             You have unsaved changes — they&apos;ll be lost if you leave without saving.
@@ -228,6 +263,12 @@ export function ProfileForm({ user, onNavigate, registerLeaveGuard }: ProfileFor
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ResumeImportDialog
+        open={isImportOpen}
+        onOpenChange={setIsImportOpen}
+        onApply={applyExtracted}
+      />
     </>
   );
 }
