@@ -1,1 +1,0 @@
-npx prisma studio to  see the tables of your postgresql database.
