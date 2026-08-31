@@ -1,92 +1,232 @@
-MY AI CAREER COACH
+# My AI Career Coach
 
-An AI-powered career coaching application with tools for profile management,
-resume and cover-letter generation, resume importing, and interview practice.
+An AI-powered career coaching platform that helps users manage their professional profile, build resumes and cover letters, import existing resumes, and practice technical and behavioral interviews with AI.
 
-TECH STACK
+**Live site:** https://my-ai-carrer-coach-five.vercel.app
 
-- Frontend: Next.js 14, React, TypeScript, Tailwind CSS, Radix UI
-- Backend: NestJS 11, TypeScript, Prisma
-- Database: PostgreSQL
-- AI: Google Gemini
+## Features
 
-PROJECT STRUCTURE
+* Professional profile management
+* AI-powered resume generation
+* Resume importing
+* AI-generated cover letters
+* Interview preparation and practice
+* Personalized AI career assistance
+* Secure authentication with access and refresh tokens
+* Persistent user data with PostgreSQL
 
-- frontend/   Next.js web application
-- backend/    NestJS API and Prisma data model
+## Tech Stack
 
-REQUIREMENTS
+### Frontend
 
-- Node.js 20.16 or newer
-- npm
-- PostgreSQL
-- Google Gemini API key
+* Next.js 14
+* React
+* TypeScript
+* Tailwind CSS
+* Radix UI
 
-SETUP
+### Backend
 
-1. Install dependencies:
+* NestJS 11
+* TypeScript
+* Prisma ORM
+* REST API
+* JWT authentication
 
-   cd backend
-   npm install
+### Database
 
-   cd ../frontend
-   npm install
+* PostgreSQL
 
-2. Configure the backend:
+### AI
 
-   Copy backend/.env.example to backend/.env and set:
+* Google Gemini
 
-   DATABASE_URL
-   PORT
-   JWT_ACCESS_SECRET
-   JWT_ACCESS_EXPIRY
-   JWT_REFRESH_SECRET
-   JWT_REFRESH_EXPIRY
-   FRONTEND_URL
-   GEMINI_API_KEY
-   GEMINI_MODEL
+## Architecture
 
-3. Configure the frontend:
+The project is separated into two applications:
 
-   Copy frontend/.env.example to frontend/.env.local and set:
+```text
+.
+├── frontend/    # Next.js web application
+└── backend/     # NestJS API and Prisma data model
+```
 
-   NEXT_PUBLIC_API_URL=http://localhost:3001
+The Next.js frontend communicates with the NestJS backend through a REST API.
 
-4. Prepare the database from the backend directory:
+The backend handles authentication, application logic, database access, and communication with Google Gemini.
 
-   npx prisma generate
-   npx prisma migrate dev
+```text
+Browser
+   │
+   ▼
+Next.js Frontend
+   │
+   │ REST API
+   ▼
+NestJS Backend
+   │
+   ├── PostgreSQL / Prisma
+   │
+   └── Google Gemini API
+```
 
-RUN LOCALLY
+## Requirements
 
-Start the backend:
+* Node.js 20.16 or newer
+* npm
+* PostgreSQL
+* Google Gemini API key
 
-   cd backend
-   npm run start:dev
+## Setup
 
-Start the frontend in another terminal:
-
-   cd frontend
-   npm run dev
-
-Open http://localhost:3000. The API runs on http://localhost:3001 by default.
-
-USEFUL COMMANDS
-
-Frontend:
-
-   npm run dev
-   npm run build
-   npm run start
+### 1. Install Dependencies
 
 Backend:
 
-   npm run start:dev
-   npm run build
-   npm run test
-   npm run test:e2e
+```bash
+cd backend
+npm install
+```
 
-SECURITY
+Frontend:
 
-Do not commit backend/.env, frontend/.env.local, database credentials, JWT
-secrets, or API keys.
+```bash
+cd frontend
+npm install
+```
+
+### 2. Configure the Backend
+
+Copy the example environment file:
+
+```bash
+cd backend
+cp .env.example .env
+```
+
+Configure the following environment variables:
+
+```env
+DATABASE_URL=
+PORT=
+JWT_ACCESS_SECRET=
+JWT_ACCESS_EXPIRY=
+JWT_REFRESH_SECRET=
+JWT_REFRESH_EXPIRY=
+FRONTEND_URL=
+GEMINI_API_KEY=
+GEMINI_MODEL=
+```
+
+For local development, the backend normally runs on port `3001`.
+
+### 3. Configure the Frontend
+
+Copy the frontend environment configuration:
+
+```bash
+cd frontend
+cp .env.example .env.local
+```
+
+Set the backend API URL:
+
+```env
+NEXT_PUBLIC_API_URL=http://localhost:3001
+```
+
+### 4. Prepare the Database
+
+From the backend directory:
+
+```bash
+npx prisma generate
+npx prisma migrate dev
+```
+
+## Run Locally
+
+Start the backend:
+
+```bash
+cd backend
+npm run start:dev
+```
+
+Start the frontend in another terminal:
+
+```bash
+cd frontend
+npm run dev
+```
+
+Open the frontend at:
+
+```text
+http://localhost:3000
+```
+
+The backend API runs at:
+
+```text
+http://localhost:3001
+```
+
+## Useful Commands
+
+### Frontend
+
+```bash
+npm run dev
+npm run build
+npm run start
+```
+
+### Backend
+
+```bash
+npm run start:dev
+npm run build
+npm run test
+npm run test:e2e
+```
+
+## Deployment
+
+The production frontend is deployed on Vercel.
+
+**Production:** https://my-ai-carrer-coach-five.vercel.app
+
+The production frontend communicates with the deployed NestJS API through the `NEXT_PUBLIC_API_URL` environment variable.
+
+Production credentials, database URLs, JWT secrets, and Gemini API keys are configured through environment variables and are not stored in the repository.
+
+## Security
+
+Sensitive configuration must never be committed to the repository.
+
+This includes:
+
+* `backend/.env`
+* `frontend/.env.local`
+* PostgreSQL credentials
+* JWT access and refresh secrets
+* Google Gemini API keys
+
+Environment variable example files should contain only placeholder values and documentation required to run the project locally.
+
+## Production Build
+
+Build the frontend:
+
+```bash
+cd frontend
+npm run build
+```
+
+Build the backend:
+
+```bash
+cd backend
+npm run build
+```
